@@ -1,20 +1,20 @@
 const express = require("express");
+const path = require("path");
 const app = express();
 
 app.use(express.json());
+app.use(express.static(__dirname));
 
-// ===== DATABASE (TEMPORARY) =====
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 let students = [];
 let attendance = [];
 let grades = [];
 
-// =====================================
-// STUDENTS CRUD
-// =====================================
-
 app.post("/students", (req, res) => {
   const { name } = req.body;
-
   if (!name) return res.status(400).json({ message: "Name required" });
 
   const student = {
@@ -43,13 +43,8 @@ app.put("/students/:id", (req, res) => {
 app.delete("/students/:id", (req, res) => {
   const id = parseInt(req.params.id);
   students = students.filter(s => s.id !== id);
-
   res.json({ message: "Deleted" });
 });
-
-// =====================================
-// ATTENDANCE
-// =====================================
 
 app.post("/attendance", (req, res) => {
   const { studentId, status, subject, remarks } = req.body;
@@ -74,7 +69,6 @@ app.post("/attendance", (req, res) => {
 app.get("/attendance/:studentId", (req, res) => {
   const studentId = parseInt(req.params.studentId);
   const records = attendance.filter(a => a.studentId === studentId);
-
   res.json(records);
 });
 
@@ -93,13 +87,8 @@ app.put("/attendance/:id", (req, res) => {
 app.delete("/attendance/:id", (req, res) => {
   const id = parseInt(req.params.id);
   attendance = attendance.filter(a => a.id !== id);
-
   res.json({ message: "Deleted" });
 });
-
-// =====================================
-// ATTENDANCE SUMMARY
-// =====================================
 
 app.get("/attendance-summary/:studentId", (req, res) => {
   const studentId = parseInt(req.params.studentId);
@@ -127,10 +116,6 @@ app.get("/attendance-summary/:studentId", (req, res) => {
   });
 });
 
-// =====================================
-// GRADES
-// =====================================
-
 app.post("/grades", (req, res) => {
   const { studentId, score, type } = req.body;
 
@@ -152,7 +137,6 @@ app.post("/grades", (req, res) => {
 app.get("/grades/:studentId", (req, res) => {
   const studentId = parseInt(req.params.studentId);
   const result = grades.filter(g => g.studentId === studentId);
-
   res.json(result);
 });
 
@@ -169,13 +153,8 @@ app.put("/grades/:id", (req, res) => {
 app.delete("/grades/:id", (req, res) => {
   const id = parseInt(req.params.id);
   grades = grades.filter(g => g.id !== id);
-
   res.json({ message: "Deleted" });
 });
-
-// =====================================
-// FINAL GRADE
-// =====================================
 
 app.get("/final-grade/:studentId", (req, res) => {
   const studentId = parseInt(req.params.studentId);
@@ -200,7 +179,7 @@ app.get("/final-grade/:studentId", (req, res) => {
 
   let finalGrade = (avgGrade * 0.7) + (attendanceScore * 0.3);
 
-  let warning = absent >= 5 ? "⚠️ Too many absences" : "OK";
+  let warning = absent >= 5 ? "Too many absences" : "OK";
 
   res.json({
     academicGrade: avgGrade,
@@ -209,10 +188,6 @@ app.get("/final-grade/:studentId", (req, res) => {
     warning
   });
 });
-
-// =====================================
-// SERVER START (FIXED)
-// =====================================
 
 const PORT = process.env.PORT || 3000;
 
