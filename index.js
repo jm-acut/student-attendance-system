@@ -1,196 +1,93 @@
 const express = require("express");
-const path = require("path");
 const app = express();
 
 app.use(express.json());
-app.use(express.static(__dirname));
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
+// In-memory database
+let students = [
+  {
+    id: 1,
+    name: "Juan Dela Cruz",
+    status: "Present",
+    date: "2026-05-04"
+  }
+];
 
-let students = [];
-let attendance = [];
-let grades = [];
-
-app.post("/students", (req, res) => {
-  const { name } = req.body;
-  if (!name) return res.status(400).json({ message: "Name required" });
-
-  const student = {
-    id: students.length + 1,
-    name
-  };
-
-  students.push(student);
-  res.json(student);
-});
-
-app.get("/students", (req, res) => {
+// GET all attendance
+app.get("/api/attendance", (req, res) => {
   res.json(students);
 });
 
-app.put("/students/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+// GET single student
+app.get("/api/attendance/:id", (req, res) => {
+  const id = Number(req.params.id);
   const student = students.find(s => s.id === id);
 
-  if (!student) return res.status(404).json({ message: "Not found" });
+  if (!student) {
+    return res.status(404).json({ error: "Student not found" });
+  }
 
-  student.name = req.body.name || student.name;
   res.json(student);
 });
 
-app.delete("/students/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  students = students.filter(s => s.id !== id);
-  res.json({ message: "Deleted" });
-});
+// POST - add attendance
+app.post("/api/attendance", (req, res) => {
+  const { name, status, date } = req.body;
 
-app.post("/attendance", (req, res) => {
-  const { studentId, status, subject, remarks } = req.body;
-
-  if (!studentId || !status) {
-    return res.status(400).json({ message: "Missing fields" });
+  if (!name || !status || !date) {
+    return res.status(400).json({ error: "All fields are required" });
   }
 
-  const record = {
-    id: attendance.length + 1,
-    studentId,
+  const newStudent = {
+    id: Date.now(),
+    name,
     status,
-    subject: subject || "General",
-    remarks: remarks || "",
-    date: new Date()
+    date
   };
 
-  attendance.push(record);
-  res.json(record);
+  students.push(newStudent);
+  res.status(201).json(newStudent);
 });
 
-app.get("/attendance/:studentId", (req, res) => {
-  const studentId = parseInt(req.params.studentId);
-  const records = attendance.filter(a => a.studentId === studentId);
-  res.json(records);
-});
+// PUT - update attendance
+app.put("/api/attendance/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const student = students.find(s => s.id === id);
 
-app.put("/attendance/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const record = attendance.find(a => a.id === id);
-
-  if (!record) return res.status(404).json({ message: "Not found" });
-
-  record.status = req.body.status || record.status;
-  record.remarks = req.body.remarks || record.remarks;
-
-  res.json(record);
-});
-
-app.delete("/attendance/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  attendance = attendance.filter(a => a.id !== id);
-  res.json({ message: "Deleted" });
-});
-
-app.get("/attendance-summary/:studentId", (req, res) => {
-  const studentId = parseInt(req.params.studentId);
-  const records = attendance.filter(a => a.studentId === studentId);
-
-  let present = 0, absent = 0, late = 0, excused = 0;
-
-  records.forEach(r => {
-    if (r.status === "present") present++;
-    else if (r.status === "absent") absent++;
-    else if (r.status === "late") late++;
-    else if (r.status === "excused") excused++;
-  });
-
-  let total = records.length;
-  let percentage = total > 0 ? ((present + late * 0.5) / total) * 100 : 0;
-
-  res.json({
-    total,
-    present,
-    absent,
-    late,
-    excused,
-    attendancePercentage: percentage
-  });
-});
-
-app.post("/grades", (req, res) => {
-  const { studentId, score, type } = req.body;
-
-  if (!studentId || score == null || !type) {
-    return res.status(400).json({ message: "Missing fields" });
+  if (!student) {
+    return res.status(404).json({ error: "Student not found" });
   }
 
-  const grade = {
-    id: grades.length + 1,
-    studentId,
-    score,
-    type
-  };
+  const { name, status, date } = req.body;
 
-  grades.push(grade);
-  res.json(grade);
+  if (name !== undefined) student.name = name;
+  if (status !== undefined) student.status = status;
+  if (date !== undefined) student.date = date;
+
+  res.json(student);
 });
 
-app.get("/grades/:studentId", (req, res) => {
-  const studentId = parseInt(req.params.studentId);
-  const result = grades.filter(g => g.studentId === studentId);
-  res.json(result);
-});
+// DELETE - remove record
+app.delete("/api/attendance/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const index = students.findIndex(s => s.id === id);
 
-app.put("/grades/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  const grade = grades.find(g => g.id === id);
-
-  if (!grade) return res.status(404).json({ message: "Not found" });
-
-  grade.score = req.body.score || grade.score;
-  res.json(grade);
-});
-
-app.delete("/grades/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  grades = grades.filter(g => g.id !== id);
-  res.json({ message: "Deleted" });
-});
-
-app.get("/final-grade/:studentId", (req, res) => {
-  const studentId = parseInt(req.params.studentId);
-
-  const studentGrades = grades.filter(g => g.studentId === studentId);
-  const records = attendance.filter(a => a.studentId === studentId);
-
-  if (studentGrades.length === 0) {
-    return res.json({ finalGrade: 0 });
+  if (index === -1) {
+    return res.status(404).json({ error: "Student not found" });
   }
 
-  let totalScore = studentGrades.reduce((sum, g) => sum + g.score, 0);
-  let avgGrade = totalScore / studentGrades.length;
-
-  let absent = records.filter(r => r.status === "absent").length;
-  let late = records.filter(r => r.status === "late").length;
-  let total = records.length;
-
-  let attendanceScore = total > 0
-    ? ((total - absent - (late * 0.5)) / total) * 100
-    : 100;
-
-  let finalGrade = (avgGrade * 0.7) + (attendanceScore * 0.3);
-
-  let warning = absent >= 5 ? "Too many absences" : "OK";
-
-  res.json({
-    academicGrade: avgGrade,
-    attendanceScore,
-    finalGrade,
-    warning
-  });
+  students.splice(index, 1);
+  res.status(204).send();
 });
 
+// Root route
+app.get("/", (req, res) => {
+  res.send("Student Attendance API is running");
+});
+
+// PORT for Render
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
